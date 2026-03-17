@@ -111,10 +111,25 @@ export async function translateText(
   learningExamples: LearningExample[]
 ): Promise<string> {
   const context = buildContext(settings, role, learningExamples);
-  const systemPrompt = `You are a professional translator. Output ONLY the translation, no explanations.
-${context ? `Rules and style:\n${context}` : ""}`;
-  const userPrompt = `Translate the following to ${targetLang}. Output only the translation.\n\n${text}`;
-  return callGemini(systemPrompt, userPrompt);
+  const systemPrompt = `You are a translator. Your response must be exactly one thing: the translation of the user's text into ${targetLang}. Do not add any preamble, explanation, alternatives, or suggestions. Do not say "Translation:" or "Here is". Output only the translated text, nothing else.${context ? `\n\n${context}` : ""}`;
+  const userPrompt = text;
+  return stripFluff(await callGemini(systemPrompt, userPrompt));
+}
+
+function stripFluff(raw: string): string {
+  let s = raw.trim();
+  const prefixes = [
+    /^translation:\s*/i,
+    /^here (?:is|'s) (?:the )?(?:translation|refined text):\s*/i,
+    /^refined (?:text|version):\s*/i,
+    /^output:\s*/i,
+    /^result:\s*/i,
+    /^["']?(?:translation|refined)["']?\s*:\s*/i
+  ];
+  for (const p of prefixes) {
+    s = s.replace(p, "").trim();
+  }
+  return s;
 }
 
 export async function refineText(
@@ -125,10 +140,9 @@ export async function refineText(
   learningExamples: LearningExample[]
 ): Promise<string> {
   const context = buildContext(settings, role, learningExamples);
-  const systemPrompt = `You refine and improve text (translation or wording). Output ONLY the refined text, no explanations.
-${context ? `Rules and style:\n${context}` : ""}`;
-  const userPrompt = `Refine the following text according to this instruction: ${instruction}\n\nText:\n${text}`;
-  return callGemini(systemPrompt, userPrompt);
+  const systemPrompt = `You refine text according to the user's instruction. Your response must be exactly one thing: the refined text. Do not add any preamble, explanation, alternatives, or suggestions. Do not say "Refined:" or "Here is". Output only the refined text, nothing else.${context ? `\n\n${context}` : ""}`;
+  const userPrompt = `Instruction: ${instruction}\n\nText:\n${text}`;
+  return stripFluff(await callGemini(systemPrompt, userPrompt));
 }
 
 export async function translateOrRefine(
