@@ -65,7 +65,14 @@ export function TranslateApp({
             </div>
           ) : tab === "roles" ? (
             <div className="flex-1 overflow-auto p-6">
-              <RolesPanel roles={me.roles} onSaved={refreshMe} />
+              <RolesPanel
+                roles={me.roles}
+                onSaved={refreshMe}
+                onSelectRole={(id) => {
+                  setTab("translate");
+                  setSelectedRoleId(id);
+                }}
+              />
             </div>
           ) : null}
         </main>

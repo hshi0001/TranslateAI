@@ -16,14 +16,20 @@ export async function POST(req: NextRequest) {
   if (!session) {
     return NextResponse.json({ ok: false, error: "Sign in required" }, { status: 401 });
   }
-  const { name, traits } = (await req.json()) as { name?: string; traits?: string[] };
-  if (!name?.trim()) {
-    return NextResponse.json({ ok: false, error: "Role name required" }, { status: 400 });
+  try {
+    const body = (await req.json()) as { name?: string; traits?: string[] };
+    const name = typeof body?.name === "string" ? body.name.trim() : "";
+    const traits = Array.isArray(body?.traits) ? body.traits : [];
+    if (!name) {
+      return NextResponse.json({ ok: false, error: "Role name required" }, { status: 400 });
+    }
+    const role = await createRole(session.userId, name, traits);
+    return NextResponse.json({ ok: true, data: role });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json(
+      { ok: false, error: e instanceof Error ? e.message : "Add role failed" },
+      { status: 500 }
+    );
   }
-  const role = await createRole(
-    session.userId,
-    name.trim(),
-    Array.isArray(traits) ? traits : []
-  );
-  return NextResponse.json({ ok: true, data: role });
 }

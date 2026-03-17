@@ -6,26 +6,33 @@ type Role = { id: string; name: string; traits: string[]; learningCount?: number
 
 export function RolesPanel({
   roles,
-  onSaved
+  onSaved,
+  onSelectRole
 }: {
   roles: Role[];
   onSaved: () => void;
+  onSelectRole?: (roleId: string) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [newTraits, setNewTraits] = useState("");
   const [showAdd, setShowAdd] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const saveRole = async (id: string, name: string, traits: string[]) => {
+    setError("");
     setLoading(true);
     try {
       const res = await fetch(`/api/translate/roles/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, traits })
+        body: JSON.stringify({ name, traits }),
+        credentials: "include"
       });
+      const data = await res.json();
       if (res.ok) onSaved();
+      else setError(data.error || "Save failed");
     } finally {
       setLoading(false);
       setEditingId(null);
@@ -34,21 +41,24 @@ export function RolesPanel({
 
   const addRole = async () => {
     if (!newName.trim()) return;
+    setError("");
     setLoading(true);
     try {
+      const traits = newTraits.split(/[,，]/).map((s) => s.trim()).filter(Boolean);
       const res = await fetch("/api/translate/roles", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: newName.trim(),
-          traits: newTraits.split(/[,，]/).map((s) => s.trim()).filter(Boolean)
-        })
+        body: JSON.stringify({ name: newName.trim(), traits }),
+        credentials: "include"
       });
+      const data = await res.json();
       if (res.ok) {
         onSaved();
         setNewName("");
         setNewTraits("");
         setShowAdd(false);
+      } else {
+        setError(data.error || "Add role failed");
       }
     } finally {
       setLoading(false);
@@ -57,13 +67,17 @@ export function RolesPanel({
 
   const deleteRole = async (id: string) => {
     if (!confirm("Delete this role?")) return;
-    const res = await fetch(`/api/translate/roles/${id}`, { method: "DELETE" });
+    setError("");
+    const res = await fetch(`/api/translate/roles/${id}`, { method: "DELETE", credentials: "include" });
+    const data = await res.json();
     if (res.ok) onSaved();
+    else setError(data.error || "Delete failed");
   };
 
   return (
     <div className="max-w-xl">
       <h2 className="text-sm font-semibold text-stone-800 mb-3">Role presets</h2>
+      {error && <p className="text-red-600 text-xs mb-3">{error}</p>}
       <p className="text-xs text-stone-500 mb-4">
         Add roles (e.g. Bob, Manager) and traits (polite, bullet points). Translation follows the selected role and learns from your Copy / Refine choices.
       </p>
@@ -107,7 +121,17 @@ export function RolesPanel({
             ) : (
               <>
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-stone-800 text-sm">{r.name}</span>
+                  {onSelectRole ? (
+                    <button
+                      type="button"
+                      onClick={() => onSelectRole(r.id)}
+                      className="font-medium text-stone-800 text-sm hover:text-amber-600 hover:underline text-left"
+                    >
+                      {r.name}
+                    </button>
+                  ) : (
+                    <span className="font-medium text-stone-800 text-sm">{r.name}</span>
+                  )}
                   <div className="flex gap-2">
                     <button type="button" onClick={() => { setEditingId(r.id); setNewName(r.name); setNewTraits(r.traits.join(", ")); }} className="text-xs text-stone-500 hover:underline">Edit</button>
                     <button type="button" onClick={() => deleteRole(r.id)} className="text-xs text-red-600 hover:underline">Delete</button>
