@@ -8,7 +8,7 @@ export default function HomePage() {
   const [me, setMe] = useState<MeData | null | "loading">("loading");
 
   useEffect(() => {
-    fetch("/api/translate/me")
+    fetch("/api/translate/me", { credentials: "include" })
       .then((r) => r.json())
       .then((res) => {
         if (res.ok && res.data) setMe(res.data);

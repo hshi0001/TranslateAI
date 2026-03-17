@@ -20,7 +20,7 @@ export function TranslateApp({
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
 
   const refreshMe = async () => {
-    const res = await fetch("/api/translate/me");
+    const res = await fetch("/api/translate/me", { credentials: "include" });
     const data = await res.json();
     if (data.ok && data.data) onMeChange(data.data);
   };

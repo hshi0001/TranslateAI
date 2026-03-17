@@ -19,7 +19,8 @@ export function AuthForm({ onSuccess }: { onSuccess: (data: MeData) => void }) {
       const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password }),
+        credentials: "include"
       });
       const data = await res.json();
       if (!data.ok) {
@@ -27,7 +28,7 @@ export function AuthForm({ onSuccess }: { onSuccess: (data: MeData) => void }) {
         setLoading(false);
         return;
       }
-      const meRes = await fetch("/api/translate/me");
+      const meRes = await fetch("/api/translate/me", { credentials: "include" });
       const meData = await meRes.json();
       if (meData.ok && meData.data) onSuccess(meData.data);
       else setError("Failed to load session");

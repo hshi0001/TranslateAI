@@ -7,6 +7,7 @@ import {
   getRoleHistory,
   findUserById
 } from "@/lib/translate-store";
+import { DEFAULT_GLOBAL_SETTINGS } from "@/lib/translate-types";
 
 export async function GET() {
   const session = await getSession();
@@ -14,8 +15,16 @@ export async function GET() {
     return NextResponse.json({ ok: true, data: null });
   }
   const user = await findUserById(session.userId);
+  // On Vercel, /tmp is per-instance; user may exist on another instance. Trust JWT and return minimal me so login still works.
   if (!user) {
-    return NextResponse.json({ ok: true, data: null });
+    return NextResponse.json({
+      ok: true,
+      data: {
+        user: { id: session.userId, email: session.email },
+        settings: { ...DEFAULT_GLOBAL_SETTINGS },
+        roles: []
+      }
+    });
   }
   const [settings, roles] = await Promise.all([
     getGlobalSettings(session.userId),
