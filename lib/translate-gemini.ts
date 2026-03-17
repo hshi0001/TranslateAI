@@ -1,8 +1,8 @@
 import type { GlobalSettings, TranslateRole, LearningExample } from "./translate-types";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-// Default to a broadly available, lightweight model; allow override via GEMINI_MODEL.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-1.0-pro";
+// Default to Gemini 2.5 Pro; override via GEMINI_MODEL if needed.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-pro";
 
 export const isTranslateGeminiConfigured = !!GEMINI_API_KEY;
 
