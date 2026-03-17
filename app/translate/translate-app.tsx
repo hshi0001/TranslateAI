@@ -70,6 +70,7 @@ export function TranslateApp({
                 onSaved={(addedRole) => {
                   if (addedRole) {
                     onMeChange({ ...me, roles: [...me.roles, addedRole] });
+                    return;
                   }
                   refreshMe();
                 }}
