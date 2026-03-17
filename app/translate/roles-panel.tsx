@@ -10,7 +10,7 @@ export function RolesPanel({
   onSelectRole
 }: {
   roles: Role[];
-  onSaved: () => void;
+  onSaved: (addedRole?: Role) => void;
   onSelectRole?: (roleId: string) => void;
 }) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -51,9 +51,15 @@ export function RolesPanel({
         body: JSON.stringify({ name: newName.trim(), traits }),
         credentials: "include"
       });
-      const data = await res.json();
-      if (res.ok) {
-        onSaved();
+      let data: { ok?: boolean; error?: string; data?: Role } = {};
+      try {
+        data = await res.json();
+      } catch {
+        setError(res.status === 401 ? "Sign in required" : `Add failed (${res.status})`);
+        return;
+      }
+      if (res.ok && data.data) {
+        onSaved({ ...data.data, learningCount: 0, historyCount: 0 });
         setNewName("");
         setNewTraits("");
         setShowAdd(false);
