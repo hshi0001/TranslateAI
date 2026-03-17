@@ -43,7 +43,10 @@ export function TranslateApp({
           currentTab={tab}
           selectedRoleId={selectedRoleId}
           onTabChange={(t) => { setTab(t); setSelectedRoleId(null); }}
-          onSelectRole={setSelectedRoleId}
+          onSelectRole={(id) => {
+            setTab("translate");
+            setSelectedRoleId(id);
+          }}
           roles={me.roles}
           onLogout={async () => {
             await fetch("/api/translate/auth/logout", { method: "POST" });
