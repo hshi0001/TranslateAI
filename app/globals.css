@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-background text-foreground antialiased;
+}
+
+.container-page {
+  @apply max-w-6xl mx-auto px-6 py-8;
+}
+
+/* IDE-style flat panels, no rounded cards */
+.panel {
+  @apply bg-white border border-gray-200;
+}
+
