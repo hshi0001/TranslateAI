@@ -13,7 +13,10 @@ import type {
 } from "./translate-types";
 import { DEFAULT_GLOBAL_SETTINGS } from "./translate-types";
 
-const DATA_DIR = path.join(process.cwd(), "data");
+// On Vercel the project filesystem is read-only; use /tmp so registration and store writes work (data is ephemeral).
+const DATA_DIR = process.env.VERCEL
+  ? path.join("/tmp", "translate-app-data")
+  : path.join(process.cwd(), "data");
 const STORE_FILE = path.join(DATA_DIR, "translate-store.json");
 
 async function ensureDir() {
