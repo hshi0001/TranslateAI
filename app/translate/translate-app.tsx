@@ -54,36 +54,41 @@ export function TranslateApp({
           }}
         />
         <main className="flex-1 flex flex-col min-h-0 overflow-hidden bg-stone-50">
-          {tab === "translate" ? (
-            <div className="flex-1 min-h-0 flex flex-col">
-              <TranslatePanel
-                me={me}
-                activeRoleId={selectedRoleId}
-                onLearnRecorded={refreshMe}
-              />
-            </div>
-          ) : tab === "settings" ? (
-            <div className="flex-1 overflow-auto p-6">
-              <GlobalSettingsPanel settings={me.settings} onSaved={refreshMe} />
-            </div>
-          ) : tab === "roles" ? (
-            <div className="flex-1 overflow-auto p-6">
-              <RolesPanel
-                roles={me.roles}
-                onSaved={(addedRole) => {
-                  if (addedRole) {
-                    onMeChange({ ...me, roles: [...me.roles, addedRole] });
-                    return;
-                  }
-                  refreshMe();
-                }}
-                onSelectRole={(id) => {
-                  setTab("translate");
-                  setSelectedRoleId(id);
-                }}
-              />
-            </div>
-          ) : null}
+          <div
+            className="flex-1 min-h-0 flex flex-col"
+            style={{ display: tab === "translate" ? "flex" : "none" }}
+          >
+            <TranslatePanel
+              me={me}
+              activeRoleId={selectedRoleId}
+              onLearnRecorded={refreshMe}
+            />
+          </div>
+          <div
+            className="flex-1 overflow-auto p-6"
+            style={{ display: tab === "settings" ? "block" : "none" }}
+          >
+            <GlobalSettingsPanel settings={me.settings} onSaved={refreshMe} />
+          </div>
+          <div
+            className="flex-1 overflow-auto p-6"
+            style={{ display: tab === "roles" ? "block" : "none" }}
+          >
+            <RolesPanel
+              roles={me.roles}
+              onSaved={(addedRole) => {
+                if (addedRole) {
+                  onMeChange({ ...me, roles: [...me.roles, addedRole] });
+                  return;
+                }
+                refreshMe();
+              }}
+              onSelectRole={(id) => {
+                setTab("translate");
+                setSelectedRoleId(id);
+              }}
+            />
+          </div>
         </main>
       </div>
     </div>
