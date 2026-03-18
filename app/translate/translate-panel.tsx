@@ -3,6 +3,30 @@
 import { useState, useEffect, useRef } from "react";
 import type { MeData } from "./page";
 
+const MESSAGES_STORAGE_KEY = "translate-app-messages";
+const MAX_STORED_BYTES = 450000;
+
+function loadMessagesFromStorage(userId: string): Record<string, ChatMessage[]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(`${MESSAGES_STORAGE_KEY}-${userId}`);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, ChatMessage[]>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveMessagesToStorage(userId: string, data: Record<string, ChatMessage[]>) {
+  if (typeof window === "undefined") return;
+  try {
+    const s = JSON.stringify(data);
+    if (s.length > MAX_STORED_BYTES) return;
+    localStorage.setItem(`${MESSAGES_STORAGE_KEY}-${userId}`, s);
+  } catch {}
+}
+
 const TARGET_LANGUAGES = [
   { value: "English", short: "ENG" },
   { value: "Chinese", short: "中文" },
@@ -33,7 +57,13 @@ export function TranslatePanel({
   activeRoleId: string | null;
   onLearnRecorded: () => void;
 }) {
-  const [messagesByRole, setMessagesByRole] = useState<Record<string, ChatMessage[]>>({});
+  const [messagesByRole, setMessagesByRole] = useState<Record<string, ChatMessage[]>>(
+    () => loadMessagesFromStorage(me.user.id)
+  );
+
+  useEffect(() => {
+    saveMessagesToStorage(me.user.id, messagesByRole);
+  }, [me.user.id, messagesByRole]);
   const [input, setInput] = useState("");
   const [targetLang, setTargetLang] = useState("English");
   const [loading, setLoading] = useState(false);
