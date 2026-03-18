@@ -49,8 +49,9 @@ export function TranslatePanel({
       ? activeRoleId
       : null;
 
+  // Use activeRoleId for conversation key so preset-role chat stays visible even if me.roles was refreshed from another instance (e.g. Vercel).
   const currentRoleKey =
-    activeRoleId === "_other" ? "_other" : (effectiveRoleId || "_default");
+    activeRoleId === "_other" ? "_other" : (activeRoleId || "_default");
   const messages = messagesByRole[currentRoleKey] ?? [];
 
   useEffect(() => {
