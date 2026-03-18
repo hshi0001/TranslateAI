@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
-import { getSession } from "@/lib/translate-auth";
+import { getSession, isAdminEmail } from "@/lib/translate-auth";
 import {
   getGlobalSettings,
   getRoles,
   getLearningExamples,
   getRoleHistory,
-  findUserById
+  findUserById,
+  getUserLimits
 } from "@/lib/translate-store";
 import { DEFAULT_GLOBAL_SETTINGS } from "@/lib/translate-types";
 
@@ -22,13 +23,16 @@ export async function GET() {
       data: {
         user: { id: session.userId, email: session.email },
         settings: { ...DEFAULT_GLOBAL_SETTINGS },
-        roles: []
+        roles: [],
+        limits: { maxPerMessage: 200, maxPerDay: 2000 },
+        isAdmin: isAdminEmail(session.email)
       }
     });
   }
-  const [settings, roles] = await Promise.all([
+  const [settings, roles, limits] = await Promise.all([
     getGlobalSettings(session.userId),
-    getRoles(session.userId)
+    getRoles(session.userId),
+    getUserLimits(session.userId)
   ]);
   const rolesWithCount = await Promise.all(
     roles.map(async (r) => {
@@ -44,7 +48,9 @@ export async function GET() {
     data: {
       user: { id: user.id, email: user.email },
       settings,
-      roles: rolesWithCount
+      roles: rolesWithCount,
+      limits,
+      isAdmin: isAdminEmail(user.email)
     }
   });
 }

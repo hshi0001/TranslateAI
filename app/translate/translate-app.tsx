@@ -6,8 +6,9 @@ import { Sidebar } from "./sidebar";
 import { GlobalSettingsPanel } from "./global-settings-panel";
 import { RolesPanel } from "./roles-panel";
 import { TranslatePanel } from "./translate-panel";
+import { AdminPanel } from "./admin-panel";
 
-type Tab = "translate" | "settings" | "roles";
+type Tab = "translate" | "settings" | "roles" | "admin";
 
 export function TranslateApp({
   me,
@@ -58,6 +59,7 @@ export function TranslateApp({
             if (id != null) setTab("translate");
           }}
           roles={me.roles}
+          isAdmin={me.isAdmin}
           onLogout={async () => {
             await fetch("/api/translate/auth/logout", { method: "POST" });
             onMeChange(null);
@@ -98,6 +100,12 @@ export function TranslateApp({
                 setSelectedRoleId(id);
               }}
             />
+          </div>
+          <div
+            className="flex-1 overflow-auto p-6"
+            style={{ display: tab === "admin" ? "block" : "none" }}
+          >
+            <AdminPanel />
           </div>
         </main>
       </div>

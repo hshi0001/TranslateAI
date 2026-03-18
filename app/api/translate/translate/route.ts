@@ -4,10 +4,8 @@ import {
   getGlobalSettings,
   getRoles,
   getLearningExamples,
-  appendToConversation,
-  createConversation,
-  getConversation,
-  appendToRoleHistory
+  checkAndAddUsage,
+  getUserLimits
 } from "@/lib/translate-store";
 import {
   translateOrRefine,
@@ -40,10 +38,19 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  let conversationId = body.conversationId?.trim();
-  if (conversationId) {
-    const existing = await getConversation(session.userId, conversationId);
-    if (!existing) conversationId = undefined;
+  const limits = await getUserLimits(session.userId);
+  if (text.length > limits.maxPerMessage) {
+    return NextResponse.json(
+      { ok: false, error: `Max ${limits.maxPerMessage} characters per message` },
+      { status: 400 }
+    );
+  }
+  const usageResult = await checkAndAddUsage(session.userId, text.length);
+  if (!usageResult.ok) {
+    return NextResponse.json(
+      { ok: false, error: usageResult.error },
+      { status: 400 }
+    );
   }
   const targetLang = (body.targetLang ?? "English").trim();
   const settings = await getGlobalSettings(session.userId);
@@ -87,36 +94,10 @@ export async function POST(req: NextRequest) {
       createdAt: now
     };
 
-    if (conversationId) {
-      const out = await appendToConversation(
-        session.userId,
-        conversationId,
-        [
-          { role: "user", content: text },
-          { role: "assistant", content: result }
-        ],
-        { updateTitleFromFirstUserMessage: true }
-      );
-      if (!out) {
-        return NextResponse.json({ ok: false, error: "Conversation not found" }, { status: 404 });
-      }
-    }
-
-    if (role) {
-      await appendToRoleHistory(session.userId, role.id, {
-        original: text,
-        result,
-        mode,
-        threadId: assistantId
-      });
-    }
-
     return NextResponse.json({
       ok: true,
       data: {
         result,
-        conversationId: conversationId ?? null,
-        title: null,
         userMessage: userMsg,
         assistantMessage: assistantMsg,
         learningExamplesUsed: learningExamples.length,

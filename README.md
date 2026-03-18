@@ -9,7 +9,7 @@ Translate and refine text with role-based style learning. Multi-user web app wit
 - **Role presets**: e.g. Bob, Manager with traits (polite, bullet points)
 - **Translate / Refine**: one button; source language auto-detected; same language → refine
 - **Learning**: "Learn" on a result saves it for the selected role; future outputs follow these examples
-- **Data**: file-based store (`data/translate-store.json`), no external DB
+- **Data**: without DB, file/tmp store (single device, lost on F5 if no localStorage). With **DATABASE_URL** (Neon/Vercel Postgres), **preset roles and account data sync across devices**; history still local.
 
 ## Tech Stack
 
@@ -37,7 +37,8 @@ In `.env.local`:
 
 - **GEMINI_API_KEY** – required for translation/refine ([Google AI](https://aistudio.google.com/apikey))
 - **TRANSLATE_JWT_SECRET** – required for login; use a long random string in production
-- **GEMINI_MODEL** – optional (default `gemini-1.0-pro`)
+- **GEMINI_MODEL** – optional (default `gemini-2.5-pro`)
+- **DATABASE_URL** – optional; Postgres connection string (e.g. [Neon](https://neon.tech)) so **preset roles and account data sync across devices and survive refresh**. Tables are created automatically on first use.
 
 ### 3. Run locally
 
@@ -77,6 +78,7 @@ Replace `YOUR_USERNAME` and `YOUR_REPO` with your GitHub username and repo name.
 4. Under **Environment Variables**, add:
    - **GEMINI_API_KEY** – your Gemini API key
    - **TRANSLATE_JWT_SECRET** – a long random secret (e.g. generate with `openssl rand -base64 32`)
+   - **DATABASE_URL** (optional) – Postgres URL from [Neon](https://neon.tech) or Vercel Storage → Postgres, so preset roles sync across devices
 5. Click **Deploy**. Vercel will build and give you a URL like `https://your-project.vercel.app`.
 
 ### 4. (Optional) Persist data on Vercel

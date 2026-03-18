@@ -11,9 +11,29 @@ import type {
   RoleHistoryRecord,
   RoleHistoryMode
 } from "./translate-types";
-import { DEFAULT_GLOBAL_SETTINGS } from "./translate-types";
+import { DEFAULT_GLOBAL_SETTINGS, MAX_CHARS_PER_DAY, MAX_CHARS_PER_MESSAGE } from "./translate-types";
+import {
+  isPgConfigured,
+  pgFindUserByEmail,
+  pgFindUserById,
+  pgCreateUser,
+  pgGetGlobalSettings,
+  pgSetGlobalSettings,
+  pgGetRoles,
+  pgCreateRole,
+  pgUpdateRole,
+  pgDeleteRole,
+  pgAddLearningExample,
+  pgGetLearningExamples,
+  pgGetDailyUsage,
+  pgCheckAndAddUsage,
+  pgGetUserLimits,
+  pgSetUserLimits,
+  pgListUsersWithLimits
+} from "./translate-store-pg";
 
-// On Vercel the project filesystem is read-only; use /tmp so registration and store writes work (data is ephemeral).
+// When DATABASE_URL is set, users/settings/roles/learning use Postgres (sync across devices). History stays file-based.
+// On Vercel without DB, use /tmp so registration and store writes work (data is ephemeral).
 const DATA_DIR = process.env.VERCEL
   ? path.join("/tmp", "translate-app-data")
   : path.join(process.cwd(), "data");
@@ -35,6 +55,7 @@ async function readStore(): Promise<TranslateStore> {
     if (!store.userMessages) store.userMessages = {};
     if (!store.userConversations) store.userConversations = {};
     if (!store.userRoleHistory) store.userRoleHistory = {};
+    if (!store.userDailyUsage) store.userDailyUsage = {};
     return store;
   } catch {
     return {
@@ -44,7 +65,8 @@ async function readStore(): Promise<TranslateStore> {
       userRoleLearning: {},
       userMessages: {},
       userConversations: {},
-      userRoleHistory: {}
+      userRoleHistory: {},
+      userDailyUsage: {}
     };
   }
 }
@@ -55,12 +77,14 @@ async function writeStore(store: TranslateStore): Promise<void> {
 }
 
 export async function findUserByEmail(email: string): Promise<TranslateUser | null> {
+  if (isPgConfigured) return pgFindUserByEmail(email);
   const store = await readStore();
   const normalized = email.trim().toLowerCase();
   return store.users.find((u) => u.email === normalized) ?? null;
 }
 
 export async function findUserById(id: string): Promise<TranslateUser | null> {
+  if (isPgConfigured) return pgFindUserById(id);
   const store = await readStore();
   return store.users.find((u) => u.id === id) ?? null;
 }
@@ -69,6 +93,7 @@ export async function createUser(
   email: string,
   passwordHash: string
 ): Promise<TranslateUser> {
+  if (isPgConfigured) return pgCreateUser(email, passwordHash);
   const store = await readStore();
   const normalized = email.trim().toLowerCase();
   if (store.users.some((u) => u.email === normalized)) {
@@ -92,6 +117,7 @@ export async function createUser(
 }
 
 export async function getGlobalSettings(userId: string): Promise<GlobalSettings> {
+  if (isPgConfigured) return pgGetGlobalSettings(userId);
   const store = await readStore();
   return (
     store.userSettings[userId] ?? {
@@ -104,6 +130,7 @@ export async function setGlobalSettings(
   userId: string,
   settings: Partial<GlobalSettings>
 ): Promise<GlobalSettings> {
+  if (isPgConfigured) return pgSetGlobalSettings(userId, settings);
   const store = await readStore();
   const current = store.userSettings[userId] ?? { ...DEFAULT_GLOBAL_SETTINGS };
   const next: GlobalSettings = {
@@ -116,6 +143,7 @@ export async function setGlobalSettings(
 }
 
 export async function getRoles(userId: string): Promise<TranslateRole[]> {
+  if (isPgConfigured) return pgGetRoles(userId);
   const store = await readStore();
   return store.userRoles[userId] ?? [];
 }
@@ -125,6 +153,7 @@ export async function createRole(
   name: string,
   traits: string[]
 ): Promise<TranslateRole> {
+  if (isPgConfigured) return pgCreateRole(userId, name, traits);
   const store = await readStore();
   const roles = store.userRoles[userId] ?? [];
   const role: TranslateRole = {
@@ -144,6 +173,7 @@ export async function updateRole(
   roleId: string,
   updates: { name?: string; traits?: string[] }
 ): Promise<TranslateRole | null> {
+  if (isPgConfigured) return pgUpdateRole(userId, roleId, updates);
   const store = await readStore();
   const roles = store.userRoles[userId] ?? [];
   const idx = roles.findIndex((r) => r.id === roleId);
@@ -159,6 +189,7 @@ export async function deleteRole(
   userId: string,
   roleId: string
 ): Promise<boolean> {
+  if (isPgConfigured) return pgDeleteRole(userId, roleId);
   const store = await readStore();
   const roles = (store.userRoles[userId] ?? []).filter((r) => r.id !== roleId);
   store.userRoles[userId] = roles;
@@ -173,6 +204,7 @@ export async function addLearningExample(
   roleId: string,
   example: Omit<LearningExample, "at">
 ): Promise<void> {
+  if (isPgConfigured) return pgAddLearningExample(userId, roleId, example);
   const store = await readStore();
   const byRole = store.userRoleLearning[userId] ?? {};
   const list = byRole[roleId] ?? [];
@@ -187,6 +219,7 @@ export async function getLearningExamples(
   userId: string,
   roleId: string
 ): Promise<LearningExample[]> {
+  if (isPgConfigured) return pgGetLearningExamples(userId, roleId);
   const store = await readStore();
   const byRole = store.userRoleLearning[userId] ?? {};
   return byRole[roleId] ?? [];
@@ -323,6 +356,60 @@ export async function getRoleHistory(
   const byRole = store.userRoleHistory[userId] ?? {};
   const list = byRole[roleId] ?? [];
   return [...list].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+function todayDateStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+export async function getUserLimits(userId: string): Promise<{ maxPerMessage: number; maxPerDay: number }> {
+  if (isPgConfigured) return pgGetUserLimits(userId);
+  return { maxPerMessage: MAX_CHARS_PER_MESSAGE, maxPerDay: MAX_CHARS_PER_DAY };
+}
+
+export async function setUserLimits(
+  userId: string,
+  limits: { maxPerMessage?: number; maxPerDay?: number }
+): Promise<{ maxPerMessage: number; maxPerDay: number }> {
+  if (!isPgConfigured) throw new Error("User limits only supported with DATABASE_URL");
+  return pgSetUserLimits(userId, limits);
+}
+
+export async function listUsersWithLimits(): Promise<
+  { id: string; email: string; maxPerMessage: number; maxPerDay: number }[]
+> {
+  if (!isPgConfigured) return [];
+  return pgListUsersWithLimits();
+}
+
+export async function getDailyUsage(userId: string): Promise<{ used: number; limit: number }> {
+  if (isPgConfigured) return pgGetDailyUsage(userId);
+  const store = await readStore();
+  const today = todayDateStr();
+  const u = store.userDailyUsage?.[userId];
+  const used = u && u.date === today ? u.chars : 0;
+  return { used, limit: MAX_CHARS_PER_DAY };
+}
+
+export async function checkAndAddUsage(
+  userId: string,
+  chars: number
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (isPgConfigured) return pgCheckAndAddUsage(userId, chars);
+  const store = await readStore();
+  const today = todayDateStr();
+  const u = store.userDailyUsage?.[userId];
+  const current = u && u.date === today ? u.chars : 0;
+  if (current + chars > MAX_CHARS_PER_DAY) {
+    return {
+      ok: false,
+      error: `Daily limit (${MAX_CHARS_PER_DAY} characters) reached. Resets at midnight.`
+    };
+  }
+  store.userDailyUsage = store.userDailyUsage ?? {};
+  store.userDailyUsage[userId] = { date: today, chars: current + chars };
+  await writeStore(store);
+  return { ok: true };
 }
 
 export async function appendToRoleHistory(

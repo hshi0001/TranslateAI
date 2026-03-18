@@ -65,9 +65,13 @@ export interface TranslateStore {
   userMessages: Record<string, ChatMessage[]>;
   userConversations: Record<string, Conversation[]>;
   userRoleHistory: Record<string, Record<string, RoleHistoryRecord[]>>;
+  userDailyUsage?: Record<string, { date: string; chars: number }>;
 }
 
 export const DEFAULT_GLOBAL_SETTINGS: GlobalSettings = {
   preferredWords: [],
   preferredEmojis: []
 };
+
+export const MAX_CHARS_PER_MESSAGE = 200;
+export const MAX_CHARS_PER_DAY = 2000;

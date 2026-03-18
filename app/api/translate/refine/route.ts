@@ -4,9 +4,8 @@ import {
   getGlobalSettings,
   getRoles,
   getLearningExamples,
-  appendToConversation,
-  getConversation,
-  appendToRoleHistory
+  checkAndAddUsage,
+  getUserLimits
 } from "@/lib/translate-store";
 import { refineText, isTranslateGeminiConfigured } from "@/lib/translate-gemini";
 
@@ -34,7 +33,20 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
   }
-  const conversationId = body.conversationId?.trim();
+  const limits = await getUserLimits(session.userId);
+  if (text.length > limits.maxPerMessage) {
+    return NextResponse.json(
+      { ok: false, error: `Max ${limits.maxPerMessage} characters per message` },
+      { status: 400 }
+    );
+  }
+  const usageResult = await checkAndAddUsage(session.userId, text.length);
+  if (!usageResult.ok) {
+    return NextResponse.json(
+      { ok: false, error: usageResult.error },
+      { status: 400 }
+    );
+  }
   const instruction = (body.instruction ?? "Improve clarity and tone, keep meaning.").trim();
   const settings = await getGlobalSettings(session.userId);
   const roles = await getRoles(session.userId);
@@ -64,28 +76,8 @@ export async function POST(req: NextRequest) {
       id: crypto.randomUUID(),
       role: "assistant" as const,
       content: result,
-      createdAt: now,
-      parentId: body.conversationId || undefined
+      createdAt: now
     };
-
-    if (conversationId) {
-      const conv = await getConversation(session.userId, conversationId);
-      if (conv) {
-        await appendToConversation(session.userId, conversationId, [
-          { role: "user", content: refineLabel },
-          { role: "assistant", content: result }
-        ]);
-      }
-    }
-
-    if (role) {
-      await appendToRoleHistory(session.userId, role.id, {
-        original: text,
-        result,
-        mode: "refine",
-        threadId: conversationId || undefined
-      });
-    }
 
     return NextResponse.json({
       ok: true,

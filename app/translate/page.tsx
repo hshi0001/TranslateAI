@@ -7,6 +7,8 @@ export interface MeData {
   user: { id: string; email: string };
   settings: { preferredWords: string[]; preferredEmojis: string[] };
   roles: { id: string; name: string; traits: string[]; learningCount?: number; historyCount?: number }[];
+  limits?: { maxPerMessage: number; maxPerDay: number };
+  isAdmin?: boolean;
 }
 
 export default function TranslateRedirectPage() {

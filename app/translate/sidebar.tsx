@@ -1,6 +1,6 @@
 "use client";
 
-type Tab = "translate" | "settings" | "roles";
+type Tab = "translate" | "settings" | "roles" | "admin";
 
 type RoleItem = { id: string; name: string; traits: string[]; learningCount?: number; historyCount?: number };
 
@@ -10,7 +10,8 @@ export function Sidebar({
   onTabChange,
   onSelectRole,
   roles,
-  onLogout
+  onLogout,
+  isAdmin
 }: {
   currentTab: Tab;
   selectedRoleId: string | null;
@@ -18,6 +19,7 @@ export function Sidebar({
   onSelectRole: (roleId: string | null) => void;
   roles: RoleItem[];
   onLogout: () => void;
+  isAdmin?: boolean;
 }) {
   return (
     <aside className="w-60 flex-shrink-0 flex flex-col bg-stone-900 text-stone-200 border-r border-stone-700">
@@ -68,6 +70,15 @@ export function Sidebar({
         >
           Role presets
         </button>
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={() => { onTabChange("admin"); onSelectRole(null); }}
+            className={`w-full text-left px-3 py-2 rounded-lg text-sm ${currentTab === "admin" ? "bg-stone-700 text-white" : "hover:bg-stone-800"}`}
+          >
+            Admin
+          </button>
+        )}
         <button
           type="button"
           onClick={onLogout}
