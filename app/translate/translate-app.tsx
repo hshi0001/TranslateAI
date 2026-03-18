@@ -22,7 +22,17 @@ export function TranslateApp({
   const refreshMe = async () => {
     const res = await fetch("/api/translate/me", { credentials: "include" });
     const data = await res.json();
-    if (data.ok && data.data) onMeChange(data.data);
+    if (!data.ok || !data.data) return;
+    const next = data.data as MeData;
+    const responseIds = new Set(next.roles.map((r) => r.id));
+    const mergedRoles = [...next.roles];
+    for (const r of me.roles) {
+      if (!responseIds.has(r.id)) {
+        mergedRoles.push(r);
+        responseIds.add(r.id);
+      }
+    }
+    onMeChange({ ...next, roles: mergedRoles });
   };
 
   return (
