@@ -44,8 +44,8 @@ export function TranslateApp({
           selectedRoleId={selectedRoleId}
           onTabChange={(t) => { setTab(t); setSelectedRoleId(null); }}
           onSelectRole={(id) => {
-            setTab("translate");
             setSelectedRoleId(id);
+            if (id != null) setTab("translate");
           }}
           roles={me.roles}
           onLogout={async () => {
